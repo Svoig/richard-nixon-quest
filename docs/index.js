@@ -19,6 +19,7 @@ loadSound("richard", "./richard.m4a");
 loadSound("title", "./title.m4a");
 loadSound("battle", "./battle.m4a");
 loadSound("explosion", "./explosion.m4a");
+loadSound("trout", "./trout.m4a");
 
 
 // SPRITES
@@ -158,7 +159,7 @@ scene("title", () => {
         "ui"
     ]);
 
-    play("title");
+    const titleMusic = play("title");
 
 
     add([
@@ -183,9 +184,46 @@ scene("title", () => {
     ]);
 
     keyPress(["space", "left", "right", "up"], () => {
+        titleMusic.stop();
         go("main");
-        play("battle", { volume: 1.0, speed: 1.5});
     });
+});
+
+scene("victory", (score) => {
+    layers([
+        "bg",
+        "ui"
+    ]);
+
+       // background image
+       add([
+        sprite("cave_bg"),
+        scale(width() / 240, height() / 240),
+        layer("bg"),
+    ]);
+
+    add([
+		text(`
+        YOU WIN!
+
+        CONGLATURATION! YOU HAVE DONE THE ONLY THING
+
+        THAT CAN EVEN LOOSELY BE DESCRIBED AS BEATING
+
+        THIS "GAME"!
+
+        YOUR SCORE WAS ${score.value} TROUTBUCKS
+
+        PRESS SPACE TO PLAY AGAIN IF YOU WANT
+        `, 10),
+		pos(width() / 2, height() / 2),
+		origin("center"),
+        layer("ui")
+	]);
+
+    keyPress("space", () => {
+        go("main");
+    })
 });
 
 scene("gameOver", ({enemy, score}) => {
@@ -193,6 +231,15 @@ scene("gameOver", ({enemy, score}) => {
         "bg",
         "ui",
     ]);
+
+    let deathSound;
+
+    if (Math.floor(Math.random() * 10) % 2 === 0) {
+        deathSound = play("aroo", { speed: 1.0 });
+    } else {
+        deathSound = play("richard", { speed: 1.0 });
+    }
+
     // background image
     add([
         sprite("cave_bg"),
@@ -213,12 +260,15 @@ scene("gameOver", ({enemy, score}) => {
         layer("ui")
 	]);
 	keyPress("space", () => {
+        deathSound.stop();
 		go("main");
 	});
 });
 
 
 scene("main", () => {
+
+    const battleMusic = play("battle", { speed: 1.5 });
 
     layers([
         "bg",
@@ -242,8 +292,9 @@ scene("main", () => {
 	}
 
     on("destroy", "enemy", () => {
+        const detuneAmount = rand(-500, 225);
         addScore();
-        play("explosion");
+        play("explosion", { detune: detuneAmount });
     });
     
     // background image
@@ -268,15 +319,14 @@ scene("main", () => {
         if (NIXON_STATE.health > 1) {
             NIXON_STATE.health--;
         } else {
-            console.log(enemy);
+            battleMusic.stop();
             go("gameOver", {enemy, score});
-            if (Math.floor(Math.random() * 10) % 2 === 0) {
-                play("aroo", { speed: 1.0 });
-            } else {
-                play("richard", { speed: 1.0 });
-            }
         }
-        
+    });
+
+    nixon.collides("goal", () => {
+        battleMusic.stop();
+        go("victory", score);
     });
 
 
@@ -319,7 +369,7 @@ scene("main", () => {
     loop(1, () => {
         const randX = rand(100, 500);
         const randY = rand(10, 100);
-        add(
+        const trout = add(
             [
                 sprite("trout"),
                 pos(randX, randY),
@@ -330,25 +380,37 @@ scene("main", () => {
                 "TROUT" // Second tag is used on Game Over screen to tell you what killed you
             ]
         );
+
+        trout.action(() => {
+            const volumeAmount = rand(0.25, 1.0);
+            const detuneAmount = rand(-500, 500);
+            // Jump over and over, and move while in the air
+            if (trout.grounded()) {
+                play("trout", {  volume: volumeAmount, detune:  detuneAmount});
+                trout.jump(TROUT_JUMP_FORCE);
+            } else {
+                trout.move(-TROUT_MOVE_SPEED);
+            }
+        });
     })
 
 
     handleNixon(nixon);
 
     const map = addLevel([
-        "                         ",
-        "               ...       ",
-        "                         ",
-        "   ===                   ",
-        "                         ",
-        "                  ===    ",
-        "                         ",
-        "                         ",
-        "                         ",
-        "                 .....   ",
-        "                         ",
-        "       ...               ",
-        "==========.......=====...",
+        "                        o",
+        "               ...      o",
+        "                        o",
+        "   ===                  o",
+        "                        o",
+        "                  ===   o",
+        "                        o",
+        "                        o",
+        "                        o",
+        "                 .....  o",
+        "                        o",
+        "       ...              o",
+        "==========.......=====..o",
     ],
     {
         width: 25,
@@ -356,17 +418,7 @@ scene("main", () => {
         pos: vec2(0, 0),
         "=": [sprite("cave"), scale(0.5), solid(), layer("objects")],
         ".": [sprite("cobblestone"), scale(0.75), solid(),  layer("objects")],
-    })
-    
-    every("TROUT", (t) => {
-        t.action(() => {
-            // Jump over and over, and move while in the air
-            if (t.grounded()) {
-                t.jump(TROUT_JUMP_FORCE);
-            } else {
-                t.move(-TROUT_MOVE_SPEED);
-            }
-        });
+        "o": [sprite("cobblestone"), scale(0.75), solid(), layer("objects"), "goal"]
     });
 
     

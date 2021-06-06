@@ -1,1 +1,1 @@
-npm i && npx serve assets -n
+npm i && npm start
