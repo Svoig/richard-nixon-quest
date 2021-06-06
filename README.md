@@ -1,0 +1,1 @@
+npm i && npx serve assets -n
