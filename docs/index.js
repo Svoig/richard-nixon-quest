@@ -27,6 +27,22 @@ loadSprite("trout", "./trout.png", {
     sliceY: 2,
 });
 
+// TEMP
+loadSprite("slime", "./slime.png", {
+    sliceX: 2,
+    sliceY: 2,
+    anims: {
+        idle: {
+            from: 0,
+            to: 1,
+        },
+        run: {
+            from: 2,
+            to: 3,
+        }
+    }
+});
+
 loadSprite("nixon", "./nixon.png", {
     sliceX: 3,
     sliceY: 3,
@@ -49,6 +65,7 @@ loadSprite("nixon", "./nixon.png", {
 
 loadSprite("cave", "./cave.png");
 loadSprite("cobblestone", "./cobblestone.png");
+loadSprite("dirt", "./dirt.png");
 loadSprite("cave_bg", "./cave_bg.png");
 loadSprite("classified", "./classified.png");
 loadSprite("explosion", "./explosion.png", {
@@ -64,12 +81,22 @@ loadSprite("explosion", "./explosion.png", {
 
 // GAME
 
+function createNixon() {
+    return add([
+        sprite("nixon"),
+        pos(8, 8),
+        layer("objects"),
+        body(),
+    ]);
+}
+
 
 function handleNixon(nixon) {
 
     // Make the camera follow Richard
     // nixon.action(() => {
-    //     camPos(nixon.pos);
+    //     const newPos = vec2(nixon.pos.x, height() / 2)
+    //     camPos(newPos);
     // });
 
     nixon.play("idle");
@@ -96,13 +123,12 @@ function handleNixon(nixon) {
     keyPress("up", () => {
         if (nixon.grounded()) {
             nixon.jump(NIXON_JUMP_FORCE);
-        
         }
     });
     
     keyDown("right", () => {
             // nixon.flipX(1)
-            nixon.move(NIXON_RUN_SPEED);
+            nixon.move(NIXON_RUN_SPEED, 0);
     });
 
     keyDown(["left", "right"], () => {
@@ -111,7 +137,7 @@ function handleNixon(nixon) {
 		}
 	});
 
-	keyRelease(["left", "right"], () => {
+	keyRelease(["left", "right", "space"], () => {
 		if (!keyIsDown("right") && !keyIsDown("left")) {
 			nixon.play("idle");
 		}
@@ -119,7 +145,7 @@ function handleNixon(nixon) {
 
     keyDown("left", () => {
         // nixon.flipX(-1);
-        nixon.move(-NIXON_RUN_SPEED);
+        nixon.move(-NIXON_RUN_SPEED, 0);
     });
 
     nixon.on("grounded", () => {
@@ -185,7 +211,66 @@ scene("title", () => {
 
     keyPress(["space", "left", "right", "up"], () => {
         titleMusic.stop();
-        go("main");
+        go("1kTrout");
+    });
+});
+
+scene("level1", () => {
+    layers([
+        "bg",
+        "objects",
+        "ui",
+    ]);
+// background
+add([
+    sprite("cave_bg"),
+    scale(width() / 240, height() / 240),
+    layer("bg"),
+]);
+
+const nixon = createNixon();
+handleNixon(nixon);
+
+const slime = add([
+    sprite("slime"),
+    pos(100, 8),
+    body()
+]);
+
+keyPress(["right", "left"], () => {
+    slime.play("run");
+});
+
+keyDown("right", () => {
+    slime.move(-NIXON_RUN_SPEED, 0);
+});
+keyDown("left", () => {
+    slime.move(NIXON_RUN_SPEED, 0);
+});
+
+
+    const map = addLevel([
+        "                                                 o",
+        "               ...                               o",
+        "                                                 o",
+        "   ===                        =========          o",
+        "                                                 o",
+        "                  ===                            o",
+        "                                                 o",
+        "                              ......             o",
+        "                                                 o",
+        "                 .....                           o",
+        "                                                 o",
+        "       ...                                       o",
+        "==========.......=====..=========================o",
+    ],
+    {
+        width: 15,
+        height: 15,
+        pos: vec2(0, 0),
+        "=": [sprite("cave"), scale(0.5), solid(), layer("objects")],
+        ".": [sprite("cobblestone"), scale(0.75), solid(),  layer("objects")],
+        "o": [sprite("dirt"), scale(0.75), solid(), layer("objects"), "goal"]
     });
 });
 
@@ -195,7 +280,7 @@ scene("victory", (score) => {
         "ui"
     ]);
 
-       // background image
+       // background
        add([
         sprite("cave_bg"),
         scale(width() / 240, height() / 240),
@@ -222,7 +307,7 @@ scene("victory", (score) => {
 	]);
 
     keyPress("space", () => {
-        go("main");
+        go("1kTrout");
     })
 });
 
@@ -261,12 +346,12 @@ scene("gameOver", ({enemy, score}) => {
 	]);
 	keyPress("space", () => {
         deathSound.stop();
-		go("main");
+		go("1kTrout");
 	});
 });
 
 
-scene("main", () => {
+scene("1kTrout", () => {
 
     const battleMusic = play("battle", { speed: 1.5 });
 
@@ -306,13 +391,33 @@ scene("main", () => {
         // origin("topleft")
     ]);
 
-    const nixon = add([
-        sprite("nixon"),
-        pos(8, 8),
+    const slime = add([
+        sprite("slime"),
+        pos(20, 8),
         origin("center"),
         layer("objects"),
-        body(),
+        body()
     ]);
+    
+    slime.play("idle");
+
+    keyPress("shift", () => {
+        slime.jump(NIXON_JUMP_FORCE);
+    });
+
+    keyPress(["d", "a"], () => {
+        slime.play("run");
+    });
+
+    keyDown("d", () => {
+        slime.move(NIXON_RUN_SPEED);
+    });
+    
+    keyDown("a", () => {
+        slime.move(-NIXON_RUN_SPEED);
+    });
+
+    const nixon = createNixon();
 
 
     nixon.collides("enemy", (enemy) => {
@@ -398,19 +503,19 @@ scene("main", () => {
     handleNixon(nixon);
 
     const map = addLevel([
-        "                        o",
-        "               ...      o",
-        "                        o",
-        "   ===                  o",
-        "                        o",
-        "                  ===   o",
-        "                        o",
-        "                        o",
-        "                        o",
-        "                 .....  o",
-        "                        o",
-        "       ...              o",
-        "==========.......=====..o",
+        "                                                 o",
+        "               ...                               o",
+        "                                                 o",
+        "   ===                        =========          o",
+        "                                                 o",
+        "                  ===                            o",
+        "                                                 o",
+        "                              ......             o",
+        "                                                 o",
+        "                 .....                           o",
+        "                                                 o",
+        "       ...                                       o",
+        "==========.......=====..=========================o",
     ],
     {
         width: 25,
@@ -418,7 +523,7 @@ scene("main", () => {
         pos: vec2(0, 0),
         "=": [sprite("cave"), scale(0.5), solid(), layer("objects")],
         ".": [sprite("cobblestone"), scale(0.75), solid(),  layer("objects")],
-        "o": [sprite("cobblestone"), scale(0.75), solid(), layer("objects"), "goal"]
+        "o": [sprite("dirt"), scale(0.75), solid(), layer("objects"), "goal"]
     });
 
     
