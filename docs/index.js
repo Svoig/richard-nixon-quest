@@ -351,20 +351,6 @@ scene("level1", () => {
         });
 
 
-    add([
-        text(`Grid height: ${map.gridHeight}`, 14),
-        pos(width() / 2, height() / 2),
-        origin("center"),
-        layer("ui")
-    ])
-    add([
-
-        text(`Height: ${map.height()}`, 14),
-        pos((width() / 2), (height() / 2) + 250),
-        origin("center"),
-        layer("ui")
-    ])
-
     every("SLIME", (slime) => {
         loop(0.5, () => {
             const randomNumber = Math.floor(rand(1, 10));
