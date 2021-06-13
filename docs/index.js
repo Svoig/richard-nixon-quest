@@ -2,6 +2,7 @@ const NIXON_JUMP_FORCE = 300;
 const NIXON_RUN_SPEED = 100;
 const TROUT_JUMP_FORCE = 150;
 const TROUT_MOVE_SPEED = 75;
+const SLIME_MOVE_SPEED = 50;
 
 const NIXON_STATE = {
     health: 1,
@@ -90,6 +91,47 @@ function createNixon() {
     ]);
 }
 
+function sceneSetup(nixon) {
+    // background
+    add([
+        sprite("cave_bg"),
+        scale(width() / 240, height() / 240),
+        layer("bg"),
+    ]);
+
+    const battleMusic = play("battle", { speed: 1.5 });
+
+    // display score
+    const score = add([
+        text("0", 16),
+        layer("ui"),
+        pos(9, 9),
+        {
+            value: 0,
+        },
+    ]);
+
+    on("destroy", "enemy", () => {
+        const detuneAmount = rand(-500, 225);
+        addScore(score);
+        play("explosion", { detune: detuneAmount });
+    });
+
+    nixon.collides("enemy", (enemy) => {
+        if (NIXON_STATE.health > 1) {
+            NIXON_STATE.health--;
+        } else {
+            battleMusic.stop();
+            go("gameOver", { enemy, score });
+        }
+    });
+
+    nixon.collides("goal", () => {
+        battleMusic.stop();
+        go("victory", score);
+    });
+}
+
 
 function handleNixon(nixon) {
 
@@ -125,23 +167,23 @@ function handleNixon(nixon) {
             nixon.jump(NIXON_JUMP_FORCE);
         }
     });
-    
+
     keyDown("right", () => {
-            // nixon.flipX(1)
-            nixon.move(NIXON_RUN_SPEED, 0);
+        // nixon.flipX(1)
+        nixon.move(NIXON_RUN_SPEED, 0);
     });
 
     keyDown(["left", "right"], () => {
-		if (nixon.grounded() && nixon.curAnim() !== "run") {
-			nixon.play("run");
-		}
-	});
+        if (nixon.grounded() && nixon.curAnim() !== "run") {
+            nixon.play("run");
+        }
+    });
 
-	keyRelease(["left", "right", "space"], () => {
-		if (!keyIsDown("right") && !keyIsDown("left")) {
-			nixon.play("idle");
-		}
-	});
+    keyRelease(["left", "right", "space"], () => {
+        if (!keyIsDown("right") && !keyIsDown("left")) {
+            nixon.play("idle");
+        }
+    });
 
     keyDown("left", () => {
         // nixon.flipX(-1);
@@ -153,6 +195,42 @@ function handleNixon(nixon) {
             nixon.play("idle");
         }
     })
+}
+
+function handleTroutSpawner(troutSpawner) {
+    loop(2, () => {
+        const trout = add([
+            sprite("trout"),
+            pos(troutSpawner.pos.x, troutSpawner.pos.y),
+            body(),
+            layer("objects"),
+            "enemy",
+            "TROUT"
+        ]);
+
+        // TODO: Performance?
+        trout.action(() => handleTrout(trout));
+    });
+}
+
+function handleTrout(trout) {
+    const volumeAmount = rand(0.25, 1.0);
+    const detuneAmount = rand(-500, 500);
+    // const direction = rand(1, 10) % 2 === 0 ? 1 : -1;
+    // Jump over and over, and move while in the air
+    if (trout.grounded()) {
+        play("trout", { volume: volumeAmount, detune: detuneAmount });
+        trout.jump(TROUT_JUMP_FORCE);
+    } else {
+        // trout.move(TROUT_MOVE_SPEED * direction);
+        trout.move(-TROUT_MOVE_SPEED);
+    }
+}
+
+
+function addScore(score) {
+    score.value += 100;
+    score.text = score.value;
 }
 
 scene("menu", () => {
@@ -211,7 +289,8 @@ scene("title", () => {
 
     keyPress(["space", "left", "right", "up"], () => {
         titleMusic.stop();
-        go("1kTrout");
+        // go("1kTrout");
+        go("level1");
     });
 });
 
@@ -221,42 +300,38 @@ scene("level1", () => {
         "objects",
         "ui",
     ]);
-// background
-add([
-    sprite("cave_bg"),
-    scale(width() / 240, height() / 240),
-    layer("bg"),
-]);
+    
+    const nixon = createNixon();
+    sceneSetup(nixon);
+    handleNixon(nixon);
 
-const nixon = createNixon();
-handleNixon(nixon);
+    // const slime = add([
+    //     sprite("slime"),
+    //     pos(550, 50),
+    //     body(),
+    //     layer("objects")
+    // ]);
 
-const slime = add([
-    sprite("slime"),
-    pos(100, 8),
-    body()
-]);
+    // keyPress(["right", "left"], () => {
+    //     slime.play("run");
+    // });
 
-keyPress(["right", "left"], () => {
-    slime.play("run");
-});
-
-keyDown("right", () => {
-    slime.move(-NIXON_RUN_SPEED, 0);
-});
-keyDown("left", () => {
-    slime.move(NIXON_RUN_SPEED, 0);
-});
+    // keyDown("right", () => {
+    //     slime.move(-NIXON_RUN_SPEED, 0);
+    // });
+    // keyDown("left", () => {
+    //     slime.move(NIXON_RUN_SPEED, 0);
+    // });
 
 
     const map = addLevel([
         "                                                 o",
         "               ...                               o",
-        "                                                 o",
+        "    s                          s                 o",
         "   ===                        =========          o",
-        "                                                 o",
+        "                   t                             o",
         "                  ===                            o",
-        "                                                 o",
+        "                                 t               o",
         "                              ......             o",
         "                                                 o",
         "                 .....                           o",
@@ -264,14 +339,44 @@ keyDown("left", () => {
         "       ...                                       o",
         "==========.......=====..=========================o",
     ],
-    {
-        width: 15,
-        height: 15,
-        pos: vec2(0, 0),
-        "=": [sprite("cave"), scale(0.5), solid(), layer("objects")],
-        ".": [sprite("cobblestone"), scale(0.75), solid(),  layer("objects")],
-        "o": [sprite("dirt"), scale(0.75), solid(), layer("objects"), "goal"]
+        {
+            width: 30,
+            height: 30,
+            pos: vec2(0, 0),
+            "=": [sprite("dirt"), scale(1.0), solid(), layer("objects")],
+            ".": [sprite("cobblestone"), scale(1.0), solid(), layer("objects")],
+            "o": [sprite("dirt"), scale(1.0), solid(), layer("objects"), "goal"],
+            "t": [layer("objects"), "troutSpawner"],
+            "s": [sprite("slime"), body(), layer("objects"), "enemy", "SLIME", { direction: 1}]
+        });
+
+
+    add([
+        text(`Grid height: ${map.gridHeight}`, 14),
+        pos(width() / 2, height() / 2),
+        origin("center"),
+        layer("ui")
+    ])
+    add([
+
+        text(`Height: ${map.height()}`, 14),
+        pos((width() / 2), (height() / 2) + 250),
+        origin("center"),
+        layer("ui")
+    ])
+
+    every("SLIME", (slime) => {
+        loop(0.5, () => {
+            const randomNumber = Math.floor(rand(1, 10));
+            slime.direction = randomNumber % 2 === 0 ? 1 : -1;
+        })
     });
+
+    action("SLIME", (slime) => {
+            slime.move(SLIME_MOVE_SPEED * slime.direction, 0);
+    })
+
+    every("troutSpawner", handleTroutSpawner);
 });
 
 scene("victory", (score) => {
@@ -280,15 +385,15 @@ scene("victory", (score) => {
         "ui"
     ]);
 
-       // background
-       add([
+    // background
+    add([
         sprite("cave_bg"),
         scale(width() / 240, height() / 240),
         layer("bg"),
     ]);
 
     add([
-		text(`
+        text(`
         YOU WIN!
 
         CONGLATURATION! YOU HAVE DONE THE ONLY THING
@@ -301,17 +406,17 @@ scene("victory", (score) => {
 
         PRESS SPACE TO PLAY AGAIN IF YOU WANT
         `, 10),
-		pos(width() / 2, height() / 2),
-		origin("center"),
+        pos(width() / 2, height() / 2),
+        origin("center"),
         layer("ui")
-	]);
+    ]);
 
     keyPress("space", () => {
         go("1kTrout");
     })
 });
 
-scene("gameOver", ({enemy, score}) => {
+scene("gameOver", ({ enemy, score }) => {
     layers([
         "bg",
         "ui",
@@ -332,28 +437,26 @@ scene("gameOver", ({enemy, score}) => {
         layer("bg"),
     ]);
 
-	add([
-		text(`
+    add([
+        text(`
         Impeached by: ${enemy ? enemy._tags[1] || "unknown" : "unknown"}
 
         Your score: ${score.value}
         
         PRESS SPACE TO PLAY AGAIN
         `, 14),
-		pos(width() / 2, height() / 2),
-		origin("center"),
+        pos(width() / 2, height() / 2),
+        origin("center"),
         layer("ui")
-	]);
-	keyPress("space", () => {
+    ]);
+    keyPress("space", () => {
         deathSound.stop();
-		go("1kTrout");
-	});
+        go("1kTrout");
+    });
 });
 
 
 scene("1kTrout", () => {
-
-    const battleMusic = play("battle", { speed: 1.5 });
 
     layers([
         "bg",
@@ -361,44 +464,13 @@ scene("1kTrout", () => {
         "ui",
     ]);
 
-    	// display score
-	const score = add([
-		text("0", 16),
-		layer("ui"),
-		pos(9, 9),
-		{
-			value: 0,
-		},
-	]);
-
-	function addScore() {
-		score.value += 100;
-		score.text = score.value;
-	}
-
-    on("destroy", "enemy", () => {
-        const detuneAmount = rand(-500, 225);
-        addScore();
-        play("explosion", { detune: detuneAmount });
-    });
-    
-    // background image
-    add([
-        sprite("cave_bg"),
-        scale(width() / 240, height() / 240),
-        layer("bg"),
-        // pos(0, 0),
-        // origin("topleft")
-    ]);
-
     const slime = add([
         sprite("slime"),
         pos(20, 8),
-        origin("center"),
         layer("objects"),
         body()
     ]);
-    
+
     slime.play("idle");
 
     keyPress("shift", () => {
@@ -412,28 +484,14 @@ scene("1kTrout", () => {
     keyDown("d", () => {
         slime.move(NIXON_RUN_SPEED);
     });
-    
+
     keyDown("a", () => {
         slime.move(-NIXON_RUN_SPEED);
     });
 
     const nixon = createNixon();
 
-
-    nixon.collides("enemy", (enemy) => {
-        if (NIXON_STATE.health > 1) {
-            NIXON_STATE.health--;
-        } else {
-            battleMusic.stop();
-            go("gameOver", {enemy, score});
-        }
-    });
-
-    nixon.collides("goal", () => {
-        battleMusic.stop();
-        go("victory", score);
-    });
-
+    sceneSetup(nixon);
 
     add(
         [
@@ -486,17 +544,8 @@ scene("1kTrout", () => {
             ]
         );
 
-        trout.action(() => {
-            const volumeAmount = rand(0.25, 1.0);
-            const detuneAmount = rand(-500, 500);
-            // Jump over and over, and move while in the air
-            if (trout.grounded()) {
-                play("trout", {  volume: volumeAmount, detune:  detuneAmount});
-                trout.jump(TROUT_JUMP_FORCE);
-            } else {
-                trout.move(-TROUT_MOVE_SPEED);
-            }
-        });
+        // TODO: Performance?
+        trout.action(() => handleTrout(trout));
     })
 
 
@@ -517,16 +566,16 @@ scene("1kTrout", () => {
         "       ...                                       o",
         "==========.......=====..=========================o",
     ],
-    {
-        width: 25,
-        height: 25,
-        pos: vec2(0, 0),
-        "=": [sprite("cave"), scale(0.5), solid(), layer("objects")],
-        ".": [sprite("cobblestone"), scale(0.75), solid(),  layer("objects")],
-        "o": [sprite("dirt"), scale(0.75), solid(), layer("objects"), "goal"]
-    });
+        {
+            width: 25,
+            height: 25,
+            pos: vec2(0, 0),
+            "=": [sprite("dirt"), scale(1.0), solid(), layer("objects")],
+            ".": [sprite("cobblestone"), scale(1.0), solid(), layer("objects")],
+            "o": [sprite("dirt"), scale(1.0), solid(), layer("objects"), "goal"]
+        });
 
-    
+
 });
 
 start("menu")
