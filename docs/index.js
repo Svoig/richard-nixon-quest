@@ -1,6 +1,7 @@
 const NIXON_JUMP_FORCE = 300;
 const NIXON_RUN_SPEED = 100;
-const TROUT_JUMP_FORCE = 150;
+const NIXON_KICK_DISTANCE = 75;
+const TROUT_JUMP_FORCE = 175
 const TROUT_MOVE_SPEED = 75;
 const SLIME_MOVE_SPEED = 50;
 
@@ -82,12 +83,16 @@ loadSprite("explosion", "./explosion.png", {
 
 // GAME
 
+// reusable functions
+
 function createNixon() {
     return add([
         sprite("nixon"),
         pos(8, 8),
         layer("objects"),
         body(),
+        "NIXON",
+        "debug",
     ]);
 }
 
@@ -145,9 +150,10 @@ function handleNixon(nixon) {
 
     keyPress("space", () => {
         nixon.play("kick");
+
         every("enemy", (enemy) => {
             // If the enemy is within 1 unit of Richard, punch it
-            if (nixon.pos.dist(enemy.pos) < 75) {
+            if (nixon.pos.dist(enemy.pos) < NIXON_KICK_DISTANCE) {
                 destroy(enemy)
                 const explosion = add([
                     sprite("explosion"),
@@ -300,7 +306,7 @@ scene("level1", () => {
         "objects",
         "ui",
     ]);
-    
+
     const nixon = createNixon();
     sceneSetup(nixon);
     handleNixon(nixon);
@@ -336,7 +342,7 @@ scene("level1", () => {
         "                                                 o",
         "                 .....                           o",
         "                                                 o",
-        "       ...                                       o",
+        "N      ...                                       o",
         "==========.......=====..=========================o",
     ],
         {
@@ -347,19 +353,42 @@ scene("level1", () => {
             ".": [sprite("cobblestone"), scale(1.0), solid(), layer("objects")],
             "o": [sprite("dirt"), scale(1.0), solid(), layer("objects"), "goal"],
             "t": [layer("objects"), "troutSpawner"],
-            "s": [sprite("slime"), body(), layer("objects"), "enemy", "SLIME", { direction: 1}]
+            "s": [sprite("slime"), body(), layer("objects"), "enemy", "SLIME", "debug", { direction: 1, prevPos: {} }],
+            "N": ["NIXON_START"], // TODO: Use this to set Nixon start position
         });
+
+    // debug
+    every("debug", (debugObject) => {
+        const debugRect = add([
+            rect(debugObject.width, debugObject.height),
+            color(1, 1, 1),
+            pos(debugObject.pos.x, debugObject.pos.y),
+            layer("bg")
+        ]);
+
+        debugObject.action(() => {
+            debugRect.pos = debugObject.pos;
+        });
+    });
 
 
     every("SLIME", (slime) => {
+        slime.on("move", (movedSlime) => {
+            movedSlime.prevPos = movedSlime.pos;
+        });
         loop(0.5, () => {
-            const randomNumber = Math.floor(rand(1, 10));
-            slime.direction = randomNumber % 2 === 0 ? 1 : -1;
+            // const randomNumber = Math.floor(rand(1, 10));
+            // slime.direction = randomNumber % 2 === 0 ? 1 : -1;
+            if (slime.prevPos.x === slime.pos.x) {
+                slime.direction = -slime.direction;
+            }
         })
     });
 
     action("SLIME", (slime) => {
+        if (slime.grounded()) {
             slime.move(SLIME_MOVE_SPEED * slime.direction, 0);
+        }
     })
 
     every("troutSpawner", handleTroutSpawner);
@@ -487,7 +516,7 @@ scene("1kTrout", () => {
             body(),
             layer("objects"),
             "enemy",
-            "TROUT" // Second tag is used on Game Over screen to tell you what killed you
+            "TROUT", // Second tag is used on Game Over screen to tell you what killed you
         ]
     );
 
