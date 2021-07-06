@@ -92,7 +92,7 @@ function createNixon() {
         layer("objects"),
         body(),
         "NIXON",
-        "debug",
+        // "debug",
     ]);
 }
 
@@ -353,7 +353,7 @@ scene("level1", () => {
             ".": [sprite("cobblestone"), scale(1.0), solid(), layer("objects")],
             "o": [sprite("dirt"), scale(1.0), solid(), layer("objects"), "goal"],
             "t": [layer("objects"), "troutSpawner"],
-            "s": [sprite("slime"), body(), layer("objects"), "enemy", "SLIME", "debug", { direction: 1, prevPos: {} }],
+            "s": [sprite("slime"), body(), layer("objects"), "enemy", "SLIME", { direction: 1, prevPos: {} }],
             "N": ["NIXON_START"], // TODO: Use this to set Nixon start position
         });
 
